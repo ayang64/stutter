@@ -84,7 +84,6 @@ func (s *Visit) Visit(node ast.Node) ast.Visitor {
 
 func main() {
 	for _, p := range os.Args[1:] {
-		log.Printf("p = %s", p)
 		fset := token.NewFileSet()
 		pkgs, err := parser.ParseDir(fset, p, nil, parser.SkipObjectResolution)
 		if err != nil {
