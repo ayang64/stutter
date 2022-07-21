@@ -77,6 +77,7 @@ func main() {
 	sem := make(chan struct{}, runtime.NumCPU()*4)
 	for _, p := range os.Args[1:] {
 		sem <- struct{}{}
+		p := p
 		go func() {
 			filepath.WalkDir(p, func(path string, d fs.DirEntry, e error) error {
 				if !d.IsDir() {
