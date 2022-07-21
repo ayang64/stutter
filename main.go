@@ -10,8 +10,6 @@ import (
 	"strings"
 )
 
-type MainMain string
-
 type Stutter struct {
 	Symbol   string
 	Package  string
@@ -28,16 +26,6 @@ func suggest(p string, s string) string {
 func (s Stutter) String() string {
 	return fmt.Sprintf("%s: %q in %q: recommend %q", s.Position, s.Package, s.Symbol, suggest(s.Package, s.Symbol))
 }
-
-// const block for self test
-var Foo string
-var MainFoo string
-
-// const block for self testing
-const (
-	Bar = iota + 200
-	MainBar
-)
 
 type Visit struct {
 	Stutter []Stutter
