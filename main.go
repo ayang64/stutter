@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -73,37 +74,47 @@ func (s *Visit) Visit(node ast.Node) ast.Visitor {
 }
 
 func main() {
+	sem := make(chan struct{}, runtime.NumCPU()*4)
 	for _, p := range os.Args[1:] {
-		filepath.WalkDir(p, func(path string, d fs.DirEntry, e error) error {
-			if !d.IsDir() {
-				return nil
-			}
+		sem <- struct{}{}
 
-			switch d.Name() {
-			case "testdata", "vendor":
-				return nil
-			}
-
-			fset := token.NewFileSet()
-			pkgs, err := parser.ParseDir(fset, path, nil, parser.SkipObjectResolution)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			visitors := map[string]*Visit{}
-			for _, pkg := range pkgs {
-				visitors[pkg.Name] = &Visit{Fset: fset, Package: pkg.Name}
-				for _, file := range pkg.Files {
-					ast.Walk(visitors[pkg.Name], file)
+		go func() {
+			filepath.WalkDir(p, func(path string, d fs.DirEntry, e error) error {
+				if !d.IsDir() {
+					return nil
 				}
-			}
 
-			for _, visitor := range visitors {
-				for _, s := range visitor.Stutter {
-					fmt.Printf("%s\n", s)
+				switch d.Name() {
+				case "testdata", "vendor":
+					return nil
 				}
-			}
-			return nil
-		})
+
+				fset := token.NewFileSet()
+				pkgs, err := parser.ParseDir(fset, path, nil, parser.SkipObjectResolution)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				visitors := map[string]*Visit{}
+				for _, pkg := range pkgs {
+					visitors[pkg.Name] = &Visit{Fset: fset, Package: pkg.Name}
+					for _, file := range pkg.Files {
+						ast.Walk(visitors[pkg.Name], file)
+					}
+				}
+
+				for _, visitor := range visitors {
+					for _, s := range visitor.Stutter {
+						fmt.Printf("%s\n", s)
+					}
+				}
+				return nil
+			})
+			<-sem
+		}()
+	}
+
+	for i := 0; i < cap(sem); i++ {
+		sem <- struct{}{}
 	}
 }
