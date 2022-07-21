@@ -33,46 +33,39 @@ type Visit struct {
 	Fset    *token.FileSet
 }
 
+func (v *Visit) Append(symb string, pkg string, pos token.Position) {
+	v.Stutter = append(v.Stutter, Stutter{
+		Symbol:   symb,
+		Package:  pkg,
+		Position: pos,
+	})
+}
+
 func (s *Visit) Visit(node ast.Node) ast.Visitor {
+	// case insensitive string contains function.
 	contains := func(a, b string) bool {
 		return strings.Contains(strings.ToLower(a), strings.ToLower(b))
 	}
-
 	switch v := node.(type) {
 	case *ast.FuncDecl:
 		if contains(v.Name.String(), s.Package) {
-			s.Stutter = append(s.Stutter, Stutter{
-				Symbol:   v.Name.String(),
-				Package:  s.Package,
-				Position: s.Fset.PositionFor(v.Pos(), true),
-			})
+			s.Append(v.Name.String(), s.Package, s.Fset.PositionFor(v.Pos(), true))
 		}
-
 	case *ast.GenDecl:
 		for _, spec := range v.Specs {
 			switch d := spec.(type) {
 			case *ast.TypeSpec:
 				if contains(d.Name.String(), s.Package) {
-					s.Stutter = append(s.Stutter, Stutter{
-						Symbol:   d.Name.String(),
-						Package:  s.Package,
-						Position: s.Fset.PositionFor(d.Pos(), true),
-					})
+					s.Append(d.Name.String(), s.Package, s.Fset.PositionFor(d.Pos(), true))
 				}
-
 			case *ast.ValueSpec:
 				for _, name := range d.Names {
 					if contains(name.String(), s.Package) {
-						s.Stutter = append(s.Stutter, Stutter{
-							Symbol:   name.String(),
-							Package:  s.Package,
-							Position: s.Fset.PositionFor(d.Pos(), true),
-						})
+						s.Append(name.String(), s.Package, s.Fset.PositionFor(d.Pos(), true))
 					}
 				}
 			}
 		}
-
 	}
 	return s
 }
