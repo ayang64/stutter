@@ -18,8 +18,15 @@ type Stutter struct {
 	Position token.Position
 }
 
+func suggest(p string, s string) string {
+	if idx := strings.Index(strings.ToLower(s), strings.ToLower(p)); idx != -1 {
+		s = s[:idx] + s[idx+len(p):]
+	}
+	return p + "." + s
+}
+
 func (s Stutter) String() string {
-	return fmt.Sprintf("%q stutters with %q at %s", s.Symbol, s.Package, s.Position)
+	return fmt.Sprintf("%s: %q in %q: recommend %q", s.Position, s.Package, s.Symbol, suggest(s.Package, s.Symbol))
 }
 
 // const block for self test
