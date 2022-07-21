@@ -5,8 +5,10 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -72,24 +74,36 @@ func (s *Visit) Visit(node ast.Node) ast.Visitor {
 
 func main() {
 	for _, p := range os.Args[1:] {
-		fset := token.NewFileSet()
-		pkgs, err := parser.ParseDir(fset, p, nil, parser.SkipObjectResolution)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		visitors := map[string]*Visit{}
-		for _, pkg := range pkgs {
-			visitors[pkg.Name] = &Visit{Fset: fset, Package: pkg.Name}
-			for _, file := range pkg.Files {
-				ast.Walk(visitors[pkg.Name], file)
+		filepath.WalkDir(p, func(path string, d fs.DirEntry, e error) error {
+			if !d.IsDir() {
+				return nil
 			}
-		}
 
-		for _, visitor := range visitors {
-			for _, s := range visitor.Stutter {
-				fmt.Printf("%s\n", s)
+			switch d.Name() {
+			case "testdata", "vendor":
+				return nil
 			}
-		}
+
+			fset := token.NewFileSet()
+			pkgs, err := parser.ParseDir(fset, path, nil, parser.SkipObjectResolution)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			visitors := map[string]*Visit{}
+			for _, pkg := range pkgs {
+				visitors[pkg.Name] = &Visit{Fset: fset, Package: pkg.Name}
+				for _, file := range pkg.Files {
+					ast.Walk(visitors[pkg.Name], file)
+				}
+			}
+
+			for _, visitor := range visitors {
+				for _, s := range visitor.Stutter {
+					fmt.Printf("%s\n", s)
+				}
+			}
+			return nil
+		})
 	}
 }
