@@ -86,7 +86,7 @@ func main() {
 
 				switch d.Name() {
 				case "testdata", "vendor":
-					return fmt.Errorf("skippig %q directory", d.Name())
+					return fs.SkipDir
 				}
 
 				fset := token.NewFileSet()
