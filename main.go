@@ -51,7 +51,7 @@ func (s *Visit) Visit(node ast.Node) ast.Visitor {
 	}
 	switch v := node.(type) {
 	case *ast.FuncDecl:
-		if contains(v.Name.String(), s.Package) {
+		if v.Recv == nil && contains(v.Name.String(), s.Package) {
 			s.Append(v.Name.String(), s.Package, s.Fset.PositionFor(v.Pos(), true))
 		}
 	case *ast.GenDecl:
