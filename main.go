@@ -27,7 +27,7 @@ func suggest(p string, s string) string {
 }
 
 func (s Stutter) String() string {
-	return fmt.Sprintf("%s: %q in %q: recommend %q", s.Position, s.Package, s.Symbol, suggest(s.Package, s.Symbol))
+	return fmt.Sprintf("%s: consider changing %q to %q", s.Position, s.Package+"."+s.Symbol, suggest(s.Package, s.Symbol))
 }
 
 type Visit struct {
