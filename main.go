@@ -90,7 +90,12 @@ func main() {
 				}
 
 				fset := token.NewFileSet()
-				pkgs, err := parser.ParseDir(fset, path, nil, parser.SkipObjectResolution)
+
+				notest := func(f fs.FileInfo) bool {
+					return !strings.HasSuffix(f.Name(), "_test.go")
+				}
+
+				pkgs, err := parser.ParseDir(fset, path, notest, parser.SkipObjectResolution)
 				if err != nil {
 					log.Fatal(err)
 				}
