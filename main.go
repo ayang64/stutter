@@ -11,7 +11,33 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"unicode/utf8"
 )
+
+type Symlen struct {
+	mu              sync.RWMutex
+	LongestPosition token.Position // position of longest symbol
+	LongestName     string
+	Longest         int
+
+	NumSymbols  int // number of symbols
+	TotalLength int // total length
+}
+
+func (s *Symlen) Accumulate(n string, pos token.Position) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.NumSymbols++
+	s.TotalLength += len(n)
+
+	if l := utf8.RuneCountInString(n); l > s.Longest {
+		s.LongestName = n
+		s.Longest = l
+		s.LongestPosition = pos
+	}
+}
 
 type Stutter struct {
 	Symbol   string
@@ -31,6 +57,7 @@ func (s Stutter) String() string {
 }
 
 type Visit struct {
+	symlen  *Symlen
 	Stutter []Stutter
 	Package string
 	Fset    *token.FileSet
@@ -51,18 +78,22 @@ func (s *Visit) Visit(node ast.Node) ast.Visitor {
 	}
 	switch v := node.(type) {
 	case *ast.FuncDecl:
+		s.symlen.Accumulate(v.Name.String(), s.Fset.PositionFor(v.Pos(), true))
 		if v.Recv == nil && contains(v.Name.String(), s.Package) {
 			s.Append(v.Name.String(), s.Package, s.Fset.PositionFor(v.Pos(), true))
 		}
+
 	case *ast.GenDecl:
 		for _, spec := range v.Specs {
 			switch d := spec.(type) {
 			case *ast.TypeSpec:
+				s.symlen.Accumulate(d.Name.String(), s.Fset.PositionFor(d.Pos(), true))
 				if contains(d.Name.String(), s.Package) {
 					s.Append(d.Name.String(), s.Package, s.Fset.PositionFor(d.Pos(), true))
 				}
 			case *ast.ValueSpec:
 				for _, name := range d.Names {
+					s.symlen.Accumulate(name.String(), s.Fset.PositionFor(d.Pos(), true))
 					if contains(name.String(), s.Package) {
 						s.Append(name.String(), s.Package, s.Fset.PositionFor(d.Pos(), true))
 					}
@@ -75,6 +106,8 @@ func (s *Visit) Visit(node ast.Node) ast.Visitor {
 
 func main() {
 	sem := make(chan struct{}, runtime.NumCPU()*4)
+
+	symlen := Symlen{}
 	for _, p := range os.Args[1:] {
 		sem <- struct{}{}
 		p := p
@@ -102,7 +135,7 @@ func main() {
 
 				visitors := map[string]*Visit{}
 				for _, pkg := range pkgs {
-					visitors[pkg.Name] = &Visit{Fset: fset, Package: pkg.Name}
+					visitors[pkg.Name] = &Visit{Fset: fset, Package: pkg.Name, symlen: &symlen}
 					for _, file := range pkg.Files {
 						ast.Walk(visitors[pkg.Name], file)
 					}
@@ -122,4 +155,7 @@ func main() {
 	for i := 0; i < cap(sem); i++ {
 		sem <- struct{}{}
 	}
+
+	log.Printf("longest symbol %q (%d) at %s", symlen.LongestName, symlen.Longest, symlen.LongestPosition)
+	log.Printf("average symbol length is %f", float64(symlen.TotalLength)/float64(symlen.NumSymbols))
 }
