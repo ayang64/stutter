@@ -79,16 +79,17 @@ func (s *Visit) Visit(node ast.Node) ast.Visitor {
 	switch v := node.(type) {
 	case *ast.FuncDecl:
 		s.symlen.Accumulate(v.Name.String(), s.Fset.PositionFor(v.Pos(), true))
-		if v.Recv == nil && contains(v.Name.String(), s.Package) {
+		if v.Recv == nil && v.Name.IsExported() && contains(v.Name.String(), s.Package) {
 			s.Append(v.Name.String(), s.Package, s.Fset.PositionFor(v.Pos(), true))
 		}
-
 	case *ast.GenDecl:
 		for _, spec := range v.Specs {
 			switch d := spec.(type) {
 			case *ast.TypeSpec:
 				s.symlen.Accumulate(d.Name.String(), s.Fset.PositionFor(d.Pos(), true))
-				if contains(d.Name.String(), s.Package) {
+				if strings.EqualFold(d.Name.String(), s.Package) {
+					fmt.Printf("type %s is identical to package %s. Make sure this is warranted.\n", d.Name.String(), s.Package)
+				} else if contains(d.Name.String(), s.Package) {
 					s.Append(d.Name.String(), s.Package, s.Fset.PositionFor(d.Pos(), true))
 				}
 			case *ast.ValueSpec:
