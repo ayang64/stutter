@@ -20,9 +20,8 @@ type Symlen struct {
 	LongestPosition token.Position // position of longest symbol
 	LongestName     string
 	Longest         int
-
-	NumSymbols  int // number of symbols
-	TotalLength int // total length
+	NumSymbols      int // number of symbols
+	TotalLength     int // total length
 }
 
 func (s *Symlen) Accumulate(n string, pos token.Position) {
@@ -108,10 +107,13 @@ func (s *Visit) Visit(node ast.Node) ast.Visitor {
 func main() {
 	sem := make(chan struct{}, runtime.NumCPU()*4)
 
+	notest := func(f fs.FileInfo) bool {
+		return !strings.HasSuffix(f.Name(), "_test.go")
+	}
+
 	symlen := Symlen{}
 	for _, p := range os.Args[1:] {
 		sem <- struct{}{}
-		p := p
 		go func() {
 			filepath.WalkDir(p, func(path string, d fs.DirEntry, e error) error {
 				if !d.IsDir() {
@@ -124,10 +126,6 @@ func main() {
 				}
 
 				fset := token.NewFileSet()
-
-				notest := func(f fs.FileInfo) bool {
-					return !strings.HasSuffix(f.Name(), "_test.go")
-				}
 
 				pkgs, err := parser.ParseDir(fset, path, notest, parser.SkipObjectResolution)
 				if err != nil {

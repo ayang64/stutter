@@ -5,7 +5,7 @@ Very dirty stutter detector written to satisfy my curiosity.
 ## Installation
 
 ```
-$ go install github.com/ayang64/stutter@latest
+$ go install ayan.net/stutter@latest
 ```
 
 ## Usage

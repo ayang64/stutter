@@ -1,3 +1,3 @@
-module github.com/ayang64/stutter
+module ayan.net/stutter
 
 go 1.23
